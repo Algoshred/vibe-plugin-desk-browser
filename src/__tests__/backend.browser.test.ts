@@ -185,7 +185,7 @@ async function refFor(
 }
 
 describe.skipIf(!executable)("browser desk with a real browser", () => {
-  beforeAll(() => {
+  beforeAll(async () => {
     startSite();
     profile = join(mkdtempSync(join(tmpdir(), "desk-browser-")), "profile");
     secrets.set("bank-password", { origin: base, value: PASSWORD });
@@ -201,7 +201,19 @@ describe.skipIf(!executable)("browser desk with a real browser", () => {
     });
     const workspace = mkdtempSync(join(tmpdir(), "desk-ws-"));
     guard = createDeskGuard(backend, { workspaceFolder: workspace });
-  });
+    // Warm up: a fresh Chrome on a CI runner can take over 20s to start and
+    // load its first page. Pay that once here, with its own budget, so the
+    // tests below time actions rather than a cold start.
+    const warm = await guard.act({
+      deskId: "desk-1",
+      fencingToken: "1",
+      idempotencyKey: "warm-up",
+      timeoutMs: 90_000,
+      action: { type: "navigate", url: `${base}/login` },
+    });
+    if (!warm.ok)
+      throw new Error(`browser warm-up failed: ${JSON.stringify(warm.error)}`);
+  }, 120_000);
 
   afterAll(async () => {
     await backend?.close();
