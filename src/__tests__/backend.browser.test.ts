@@ -12,7 +12,14 @@
  * Needs a Chrome or Chromium binary: DESK_BROWSER_TEST_EXECUTABLE, or
  * /usr/bin/google-chrome. Without one these tests are skipped, loudly.
  */
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import {
+  afterAll,
+  beforeAll,
+  describe,
+  expect,
+  setDefaultTimeout,
+  test,
+} from "bun:test";
 import { existsSync, mkdtempSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -39,6 +46,10 @@ const executable =
     "/usr/bin/chromium",
     "/usr/bin/chromium-browser",
   ].find((p) => existsSync(p));
+
+// A cold Chrome start on a CI runner takes several seconds; bun's 5s default
+// timed the first test out there (the login never finished).
+setDefaultTimeout(60_000);
 
 if (!executable) {
   console.warn(
