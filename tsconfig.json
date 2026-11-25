@@ -1,0 +1,10 @@
+{
+  "extends": "@burdenoff/toolchain/tsconfig/node-lib.json",
+  "compilerOptions": {
+    "target": "ESNext",
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "types": ["bun"]
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}

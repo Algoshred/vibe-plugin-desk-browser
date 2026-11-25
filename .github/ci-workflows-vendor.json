@@ -1,0 +1,19 @@
+{
+  "source": "algoshred/ci-workflows",
+  "sha": "0d0478a87a2e15eb77c969d29113bbacaeb0d211",
+  "version": "",
+  "files": {
+    ".github/actions/ci-workflows/common/gitleaks-scan/action.yml": "1a4da75b20dc414a96aba6f13becf7360d84b715837f27e267c1f96a4aa523e8",
+    ".github/actions/ci-workflows/common/gitleaks-scan/scan.sh": "1671a0370d4da60d48a528f81b9dd28002234a034b92504848a6d75fe29fd36c",
+    ".github/actions/ci-workflows/common/publish-junit/action.yml": "11282bce14963b45861e2a93245a873c495a4b8dac52f2fc2226896eb070d35b",
+    ".github/actions/ci-workflows/common/restore-sanity-cache/action.yml": "e2afde0001bf4704823c58ff2eb33291f11bc10ab443cef92b229371e2192beb",
+    ".github/actions/ci-workflows/common/setup-bun-install/action.yml": "00dcafcf9cf7cbaa3fd1af5b3ef33236086aa169ccb9359bdc6d4301f6f2c9fc",
+    ".github/actions/ci-workflows/common/setup-bun-install/lockfile-guard.sh": "e9fd10162dba16a3948859fbec3736ccf898f0c34fc909b0c89e83b10c1d37bb",
+    ".github/workflows/ci-workflows--common-release-finalize.yml": "9e3810beada8ec882c441afd989c2dd48036feac5c0f95aef96cf388335e5de3",
+    ".github/workflows/ci-workflows--common-security-scan.yml": "67272ecc1daa8d2fdb3b7909796aca57aa8c0d0cf6c7c7031967533e115dfca6",
+    ".github/workflows/ci-workflows--node-lib-release.yml": "ff9cb2f59bcbd681a9844361fe20bdc75c5ad3cf4ae39be162bb100e2f777f72",
+    ".github/workflows/ci-workflows--plugin-pr-check.yml": "30d8b149ee914272318b30bb8ab356d3613ee93f66bb07a133d00bba1c8ffef4",
+    ".github/workflows/pr-check.yml": "41bd3baa808457ddb285c6f79b1ba41117b1b33155360d5ec76758b6ef96189a",
+    ".github/workflows/release.yml": "10af9a58dcae9dc6c46acb4accb884a8c07b367394f653af054c7917d2109f4f"
+  }
+}
