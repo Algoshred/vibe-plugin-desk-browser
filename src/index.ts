@@ -18,6 +18,12 @@
  *   desk-browser.channel          "chrome", "msedge", ... instead of a path
  *   desk-browser.headless         "on" or "off" (default: off when a display exists)
  *   desk-browser.proxy            http(s) proxy URL; cloud desks use the egress proxy
+ *   desk-browser.proxy-username   proxy sign-in user name (a cloud desk: its desk id)
+ *   desk-browser.proxy-password-file
+ *                                 file holding the proxy password (a cloud desk: its
+ *                                 egress token, BOFF-16574). Read at each browser
+ *                                 start and checked before each action; when the
+ *                                 file changes the browser restarts with it.
  *   desk-browser.allowed-hosts    comma-separated host allow-list, `*.` for subdomains
  *
  * `secret_fill` needs a secret store that registers a `DeskSecretResolver`
@@ -25,6 +31,7 @@
  * refused and nothing else changes.
  */
 import { existsSync, readFileSync } from "node:fs";
+import { readFile, stat } from "node:fs/promises";
 import { dirname, join as joinPath } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -43,6 +50,7 @@ import {
   DESK_SECRET_PROVIDER_TYPE,
   type DeskSecretResolver,
   type Launcher,
+  type ProxyCredentialSource,
 } from "./backend.js";
 import { parseAllowedHosts } from "./url-guard.js";
 
@@ -58,6 +66,8 @@ export const DESK_BROWSER_CONFIG = {
   channel: "desk-browser.channel",
   headless: "desk-browser.headless",
   proxy: "desk-browser.proxy",
+  proxyUsername: "desk-browser.proxy-username",
+  proxyPasswordFile: "desk-browser.proxy-password-file",
   allowedHosts: "desk-browser.allowed-hosts",
 } as const;
 
@@ -117,6 +127,28 @@ export interface DeskBrowserPluginOptions {
   launch?: Launcher;
 }
 
+/**
+ * Proxy credentials from a password file (a cloud desk's egress token, written
+ * by wspace-sandbox-svc). The version is the file's identity, size and change
+ * time, so a rewrite with a renewed token is noticed without comparing tokens.
+ */
+export function fileProxyCredentials(
+  username: string,
+  passwordFile: string,
+): ProxyCredentialSource {
+  return {
+    async read() {
+      const info = await stat(passwordFile);
+      const password = (await readFile(passwordFile, "utf8")).trim();
+      if (!password) throw new Error("the proxy password file is empty");
+      return {
+        credentials: { username, password },
+        version: `${info.ino}:${info.size}:${info.mtimeMs}`,
+      };
+    },
+  };
+}
+
 export function createDeskBrowserPlugin(
   options: DeskBrowserPluginOptions = {},
 ): VibePluginFactory {
@@ -138,6 +170,23 @@ export function createDeskBrowserPlugin(
             `${DESK_BROWSER_CONFIG.proxy} is not an http(s) URL without credentials; ignored`,
           );
         }
+        const proxyUsername = await read(DESK_BROWSER_CONFIG.proxyUsername);
+        const proxyPasswordFile = await read(
+          DESK_BROWSER_CONFIG.proxyPasswordFile,
+        );
+        const readProxyCredentials =
+          proxyUsername && proxyPasswordFile
+            ? fileProxyCredentials(proxyUsername, proxyPasswordFile)
+            : undefined;
+        if ((proxyUsername || proxyPasswordFile) && !readProxyCredentials) {
+          log.warn(
+            `${DESK_BROWSER_CONFIG.proxyUsername} and ${DESK_BROWSER_CONFIG.proxyPasswordFile} must both be set; proxy sign-in is off`,
+          );
+        } else if (readProxyCredentials && !proxy) {
+          log.warn(
+            `${DESK_BROWSER_CONFIG.proxyUsername} is set without ${DESK_BROWSER_CONFIG.proxy}; ignored`,
+          );
+        }
         backend = new BrowserDeskBackend({
           profileFolder: joinPath(ctx.dataDir, "desk-browser-profile"),
           headless: headlessSetting
@@ -156,6 +205,7 @@ export function createDeskBrowserPlugin(
               DESK_SECRET_PROVIDER_TYPE,
             ),
           launch: options.launch,
+          readProxyCredentials,
         });
         host.serviceRegistry?.registerProvider?.(
           DESK_PROVIDER_TYPE,
@@ -197,6 +247,8 @@ export {
   BrowserDeskBackend,
   DESK_SECRET_PROVIDER_TYPE,
   type DeskSecretResolver,
+  type ProxyCredentials,
+  type ProxyCredentialSource,
 } from "./backend.js";
 export {
   checkNavigation,

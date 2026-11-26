@@ -86,6 +86,23 @@ export interface LaunchOptions {
   executablePath?: string;
   channel?: string;
   proxy?: string;
+  /** Proxy sign-in (a cloud desk's id and egress token). Only with `proxy`. */
+  proxyCredentials?: ProxyCredentials;
+}
+
+export interface ProxyCredentials {
+  username: string;
+  password: string;
+}
+
+/**
+ * Where the proxy credentials come from. Read at every launch and checked
+ * before every action: when `version` changes (a renewed egress token), the
+ * browser restarts with the new credentials and each desk's page is reopened
+ * at its last address. The profile (cookies, storage) is kept.
+ */
+export interface ProxyCredentialSource {
+  read(): Promise<{ credentials: ProxyCredentials; version: string }>;
 }
 
 export type Launcher = (
@@ -100,7 +117,14 @@ export const defaultLauncher: Launcher = (profileFolder, options) =>
       ? { executablePath: options.executablePath }
       : {}),
     ...(options.channel ? { channel: options.channel } : {}),
-    ...(options.proxy ? { proxy: { server: options.proxy } } : {}),
+    ...(options.proxy
+      ? {
+          proxy: {
+            server: options.proxy,
+            ...(options.proxyCredentials ?? {}),
+          },
+        }
+      : {}),
     viewport: BROWSER_LIMITS.viewport,
     acceptDownloads: false,
     serviceWorkers: "block",
@@ -113,6 +137,8 @@ export interface BrowserDeskOptions extends LaunchOptions {
   /** Looked up on every `secret_fill`, so a store installed later is used. */
   secrets?: () => DeskSecretResolver | undefined;
   launch?: Launcher;
+  /** Proxy sign-in, read fresh at each launch. Used only with `proxy`. */
+  readProxyCredentials?: ProxyCredentialSource;
 }
 
 interface DeskPage {
@@ -155,6 +181,12 @@ export class BrowserDeskBackend implements DeskBackend {
   private contextPromise: Promise<BrowserContext> | null = null;
   private readonly desks = new Map<string, DeskPage>();
   private closed = false;
+  /** Version of the proxy credentials the running browser signed in with. */
+  private credentialVersion: string | null = null;
+  /** Pages to reopen after a restart for new proxy credentials. */
+  private readonly reopen = new Map<string, string>();
+  /** Bumped per launch and per replacement, so a stale close event is ignored. */
+  private generation = 0;
 
   constructor(private readonly options: BrowserDeskOptions) {}
 
@@ -164,6 +196,7 @@ export class BrowserDeskBackend implements DeskBackend {
   ): Promise<DeskBackendResult> {
     if (this.closed) return fail("DESK_OFFLINE", "the browser desk is stopped");
     try {
+      await this.renewProxyCredentials();
       const desk = await this.deskPage(context.deskId);
       return await this.run(desk, action, context.deskId);
     } catch (err) {
@@ -203,15 +236,60 @@ export class BrowserDeskBackend implements DeskBackend {
     return this.contextPromise;
   }
 
+  private async proxyCredentials(): Promise<
+    { credentials: ProxyCredentials; version: string } | undefined
+  > {
+    const source = this.options.proxy
+      ? this.options.readProxyCredentials
+      : undefined;
+    if (!source) return undefined;
+    try {
+      return await source.read();
+    } catch {
+      // Never the reason: it could quote the credential file.
+      throw new ActionError(
+        "DESK_OFFLINE",
+        "the egress proxy credentials are unavailable",
+      );
+    }
+  }
+
+  /**
+   * Restart the browser when the proxy credentials changed since it started
+   * (a renewed egress token), remembering each desk's page to reopen.
+   */
+  private async renewProxyCredentials(): Promise<void> {
+    if (!this.contextPromise || this.credentialVersion === null) return;
+    const current = await this.proxyCredentials();
+    if (!current || current.version === this.credentialVersion) return;
+    for (const [deskId, desk] of this.desks) {
+      const url = desk.page.isClosed() ? "" : desk.page.url();
+      if (/^https?:/i.test(url)) this.reopen.set(deskId, url);
+    }
+    const pending = this.contextPromise;
+    this.generation++;
+    this.contextPromise = null;
+    this.credentialVersion = null;
+    this.desks.clear();
+    try {
+      await (await pending).close();
+    } catch {
+      /* already gone */
+    }
+  }
+
   private async launchContext(): Promise<BrowserContext> {
     await mkdir(this.options.profileFolder, { recursive: true, mode: 0o700 });
     const launch = this.options.launch ?? defaultLauncher;
+    const credentials = await this.proxyCredentials();
     const context = await launch(this.options.profileFolder, {
       headless: this.options.headless,
       executablePath: this.options.executablePath,
       channel: this.options.channel,
       proxy: this.options.proxy,
+      ...(credentials ? { proxyCredentials: credentials.credentials } : {}),
     });
+    this.credentialVersion = credentials?.version ?? "";
     context.setDefaultTimeout(BROWSER_LIMITS.actionTimeoutMs);
     context.setDefaultNavigationTimeout(BROWSER_LIMITS.navigationTimeoutMs);
     await context.route("**/*", async (route) => {
@@ -223,8 +301,12 @@ export class BrowserDeskBackend implements DeskBackend {
       else await route.continue();
     });
     // A crashed or closed browser is relaunched on the next action.
+    const generation = ++this.generation;
     context.on("close", () => {
+      // A browser replaced for new credentials closing late changes nothing.
+      if (generation !== this.generation) return;
       this.contextPromise = null;
+      this.credentialVersion = null;
       this.desks.clear();
     });
     return context;
@@ -242,6 +324,9 @@ export class BrowserDeskBackend implements DeskBackend {
     page.on("close", () => {
       if (this.desks.get(deskId)?.page === page) this.desks.delete(deskId);
     });
+    const url = this.reopen.get(deskId);
+    this.reopen.delete(deskId);
+    if (url) await this.reopenPage(page, url);
     return desk;
   }
 
@@ -285,6 +370,17 @@ export class BrowserDeskBackend implements DeskBackend {
       );
     }
     return { kind: "locator", locator };
+  }
+
+  /** Best effort: a page that no longer loads or passes the guard stays blank. */
+  private async reopenPage(page: Page, url: string): Promise<void> {
+    try {
+      await checkNavigation(url, this.options.guard);
+      await page.goto(url);
+      await this.afterNavigationCheck(page);
+    } catch {
+      await page.goto("about:blank").catch(() => undefined);
+    }
   }
 
   private async afterNavigationCheck(page: Page): Promise<void> {
