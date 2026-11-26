@@ -45,13 +45,23 @@ The URL guard is the same as the FluidGrids remote browser node's:
 
 Set with `vibe config set <key> <value>`:
 
-| Key                            | Default                   | Meaning                                                                            |
-| ------------------------------ | ------------------------- | ---------------------------------------------------------------------------------- |
-| `desk-browser.executable-path` | Playwright's Chromium     | Chrome or Chromium binary                                                          |
-| `desk-browser.channel`         | none                      | `chrome`, `msedge`, ... instead of a path                                          |
-| `desk-browser.headless`        | off when a display exists | `on` or `off`                                                                      |
-| `desk-browser.proxy`           | none                      | http(s) proxy URL without credentials. Cloud desks use `http://172.20.0.200:3128`. |
-| `desk-browser.allowed-hosts`   | any public host           | Comma-separated allow-list. `*.example.com` matches subdomains.                    |
+| Key                                | Default                   | Meaning                                                                            |
+| ---------------------------------- | ------------------------- | ---------------------------------------------------------------------------------- |
+| `desk-browser.executable-path`     | Playwright's Chromium     | Chrome or Chromium binary                                                          |
+| `desk-browser.channel`             | none                      | `chrome`, `msedge`, ... instead of a path                                          |
+| `desk-browser.headless`            | off when a display exists | `on` or `off`                                                                      |
+| `desk-browser.proxy`               | none                      | http(s) proxy URL without credentials. Cloud desks use `http://172.20.0.200:3128`. |
+| `desk-browser.proxy-username`      | none                      | Proxy sign-in user name. A cloud desk uses its desk id.                            |
+| `desk-browser.proxy-password-file` | none                      | File holding the proxy password. A cloud desk uses its egress token.               |
+| `desk-browser.allowed-hosts`       | any public host           | Comma-separated allow-list. `*.example.com` matches subdomains.                    |
+
+### Cloud desk egress sign-in
+
+The cloud desk egress proxy refuses a desk that does not sign in (BOFF-16574). Each desk signs in with its desk id and an egress token from `wspace-sandbox-svc`. The token sets the desk's egress mode: any public site, an allow-list of hosts, or nothing.
+
+- The password is read from a file, not from config, so the token never sits in the agent's config store.
+- The file is read when the browser starts and checked before each action. When `wspace-sandbox-svc` writes a renewed token, the browser restarts with it and each desk's page is reopened at its last address. The profile, and with it every sign-in, is kept.
+- Both settings are needed, and they apply only together with `desk-browser.proxy`. If the file cannot be read, actions fail with `DESK_OFFLINE` "the egress proxy credentials are unavailable" and the browser does not start.
 
 The browser starts on the first action and closes when the agent stops. The profile lives in `<dataDir>/desk-browser-profile` with mode 0700.
 

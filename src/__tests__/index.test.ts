@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -15,6 +15,7 @@ import createPlugin, {
   createDeskBrowserPlugin,
   defaultHeadless,
   DESK_BROWSER_CONFIG,
+  fileProxyCredentials,
   DESK_PROVIDER_TYPE,
   parseProxy,
 } from "../index.js";
@@ -191,5 +192,89 @@ describe("snapshot refs", () => {
     expect(refSelector("data-vc-x", "e12")).toBe('[data-vc-x="e12"]');
     expect(refSelector("data-vc-x", 'e1"]*')).toBeNull();
     expect(refSelector("data-vc-x", "x1")).toBeNull();
+  });
+});
+
+describe("proxy sign-in config (BOFF-16574)", () => {
+  const act = (backend: DeskBackend) =>
+    backend.act(
+      { type: "screenshot" },
+      { deskId: "d", signal: new AbortController().signal, paths: {} },
+    );
+
+  test("passes the desk id and the token file's contents to the launcher", async () => {
+    const rec = recordingLauncher();
+    const ctx = profile();
+    const tokenFile = join(ctx.dataDir, "egress-token");
+    writeFileSync(tokenFile, "vdk1.payload.sig\n");
+    const plugin = createDeskBrowserPlugin({ launch: rec.launch })(ctx);
+    const h = host({
+      [DESK_BROWSER_CONFIG.proxy]: "http://172.20.0.200:3128",
+      [DESK_BROWSER_CONFIG.proxyUsername]: "desk-7",
+      [DESK_BROWSER_CONFIG.proxyPasswordFile]: tokenFile,
+    });
+    await plugin.onServerStart?.({}, h.services);
+    await act(h.providers[0]?.provider as DeskBackend);
+    expect(rec.calls[0]?.options.proxyCredentials).toEqual({
+      username: "desk-7",
+      password: "vdk1.payload.sig",
+    });
+    await plugin.onServerStop?.();
+  });
+
+  test("credentials without a proxy, or half the credentials, are not used", async () => {
+    const configs: Array<Record<string, string>> = [
+      {
+        [DESK_BROWSER_CONFIG.proxyUsername]: "desk-7",
+        [DESK_BROWSER_CONFIG.proxyPasswordFile]: "/nope",
+      },
+      {
+        [DESK_BROWSER_CONFIG.proxy]: "http://172.20.0.200:3128",
+        [DESK_BROWSER_CONFIG.proxyUsername]: "desk-7",
+      },
+    ];
+    for (const config of configs) {
+      const rec = recordingLauncher();
+      const plugin = createDeskBrowserPlugin({ launch: rec.launch })(profile());
+      const h = host(config);
+      await plugin.onServerStart?.({}, h.services);
+      await act(h.providers[0]?.provider as DeskBackend);
+      expect(rec.calls).toHaveLength(1);
+      expect(rec.calls[0]?.options.proxyCredentials).toBeUndefined();
+      await plugin.onServerStop?.();
+    }
+  });
+
+  test("an unreadable token file keeps the browser from starting", async () => {
+    const rec = recordingLauncher();
+    const plugin = createDeskBrowserPlugin({ launch: rec.launch })(profile());
+    const h = host({
+      [DESK_BROWSER_CONFIG.proxy]: "http://172.20.0.200:3128",
+      [DESK_BROWSER_CONFIG.proxyUsername]: "desk-7",
+      [DESK_BROWSER_CONFIG.proxyPasswordFile]: "/nonexistent/egress-token",
+    });
+    await plugin.onServerStart?.({}, h.services);
+    const r = await act(h.providers[0]?.provider as DeskBackend);
+    expect(r.error).toEqual({
+      code: "DESK_OFFLINE",
+      message: "the egress proxy credentials are unavailable",
+    });
+    expect(rec.calls).toHaveLength(0);
+    await plugin.onServerStop?.();
+  });
+
+  test("fileProxyCredentials versions change when the file is rewritten", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "desk-browser-cred-"));
+    const file = join(dir, "t");
+    writeFileSync(file, "one");
+    const source = fileProxyCredentials("d", file);
+    const a = await source.read();
+    expect(a.credentials).toEqual({ username: "d", password: "one" });
+    writeFileSync(file, "two-longer");
+    const b = await source.read();
+    expect(b.credentials.password).toBe("two-longer");
+    expect(b.version).not.toBe(a.version);
+    writeFileSync(file, "  \n");
+    await expect(source.read()).rejects.toThrow("empty");
   });
 });
