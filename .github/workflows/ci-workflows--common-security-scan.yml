@@ -1,4 +1,4 @@
-# vendored from algoshred/ci-workflows@0d0478a87a2e15eb77c969d29113bbacaeb0d211
+# vendored from algoshred/ci-workflows@c67a7305dbc42a7c9423f4fb196a568ab5f5ee2e # v2026.1127.2
 # source: .github/workflows/common-security-scan.yml. Do not edit: regenerate with scripts/vendor.ts in algoshred/ci-workflows.
 # Reusable security scan: Trivy (filesystem) and gitleaks (history + net change).
 #
@@ -25,10 +25,10 @@ on:
   workflow_call:
     inputs:
       runs-on:
-        description: Runner label.
+        description: 'Runner label override. Empty (the default) routes each job itself: vars.LINUX_RUNNER, or vars.LINUX_DIND_RUNNER for jobs that need Docker, falling back to ubuntu-latest.'
         required: false
         type: string
-        default: ubuntu-latest
+        default: ''
       timeout-minutes:
         description: Timeout of each job.
         required: false
@@ -88,7 +88,7 @@ jobs:
   trivy:
     name: Trivy (filesystem)
     if: inputs.trivy
-    runs-on: ${{ inputs.runs-on }}
+    runs-on: ${{ inputs.runs-on || 'ubuntu-latest' }}
     timeout-minutes: ${{ inputs.timeout-minutes }}
     permissions:
       contents: read
@@ -98,6 +98,9 @@ jobs:
         with:
           persist-credentials: false
 
+      # Trivy's built-in cache saves a cache-trivy-<date> entry per ref per day (about 100 MB),
+      # and every save is billed CI egress to GitHub's cache (BOFF-16818). The DB download it
+      # replaces is inbound and free, so the steps below run with cache: 'false'.
       - name: Trivy (gate, fixable findings fail)
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -139,7 +142,7 @@ jobs:
   gitleaks:
     name: gitleaks (history and net change)
     if: inputs.gitleaks
-    runs-on: ${{ inputs.runs-on }}
+    runs-on: ${{ inputs.runs-on || 'ubuntu-latest' }}
     timeout-minutes: ${{ inputs.timeout-minutes }}
     permissions:
       contents: read

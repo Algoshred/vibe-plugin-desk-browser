@@ -1,19 +1,21 @@
 {
   "source": "algoshred/ci-workflows",
-  "sha": "0d0478a87a2e15eb77c969d29113bbacaeb0d211",
-  "version": "",
+  "sha": "c67a7305dbc42a7c9423f4fb196a568ab5f5ee2e",
+  "version": "v2026.1127.2",
   "files": {
-    ".github/actions/ci-workflows/common/gitleaks-scan/action.yml": "1a4da75b20dc414a96aba6f13becf7360d84b715837f27e267c1f96a4aa523e8",
+    ".github/actions/ci-workflows/common/gitleaks-scan/action.yml": "13a2b9994b03ed46ac1345e5cdee2ae499202a54c02f7080cc16eed345d04947",
     ".github/actions/ci-workflows/common/gitleaks-scan/scan.sh": "1671a0370d4da60d48a528f81b9dd28002234a034b92504848a6d75fe29fd36c",
-    ".github/actions/ci-workflows/common/publish-junit/action.yml": "11282bce14963b45861e2a93245a873c495a4b8dac52f2fc2226896eb070d35b",
-    ".github/actions/ci-workflows/common/restore-sanity-cache/action.yml": "e2afde0001bf4704823c58ff2eb33291f11bc10ab443cef92b229371e2192beb",
-    ".github/actions/ci-workflows/common/setup-bun-install/action.yml": "00dcafcf9cf7cbaa3fd1af5b3ef33236086aa169ccb9359bdc6d4301f6f2c9fc",
+    ".github/actions/ci-workflows/common/publish-junit/action.yml": "835f9112139a118beccd057e179ed07e91edd37b0678e1b6e5217753bca2c426",
+    ".github/actions/ci-workflows/common/restore-sanity-cache/action.yml": "ff10b4268d577d31999f8a806404790d3952814cbc813976fc7ba9c09495e36e",
+    ".github/actions/ci-workflows/common/setup-bun-install/action.yml": "295a41c2766f56ef1e9fe28d5f6e816081995291584779723cc7409882e5be2d",
     ".github/actions/ci-workflows/common/setup-bun-install/lockfile-guard.sh": "e9fd10162dba16a3948859fbec3736ccf898f0c34fc909b0c89e83b10c1d37bb",
-    ".github/workflows/ci-workflows--common-release-finalize.yml": "9e3810beada8ec882c441afd989c2dd48036feac5c0f95aef96cf388335e5de3",
-    ".github/workflows/ci-workflows--common-security-scan.yml": "67272ecc1daa8d2fdb3b7909796aca57aa8c0d0cf6c7c7031967533e115dfca6",
-    ".github/workflows/ci-workflows--node-lib-release.yml": "ff9cb2f59bcbd681a9844361fe20bdc75c5ad3cf4ae39be162bb100e2f777f72",
-    ".github/workflows/ci-workflows--plugin-pr-check.yml": "30d8b149ee914272318b30bb8ab356d3613ee93f66bb07a133d00bba1c8ffef4",
-    ".github/workflows/pr-check.yml": "41bd3baa808457ddb285c6f79b1ba41117b1b33155360d5ec76758b6ef96189a",
-    ".github/workflows/release.yml": "10af9a58dcae9dc6c46acb4accb884a8c07b367394f653af054c7917d2109f4f"
+    ".github/actions/ci-workflows/node-lib/sign-plugin/action.yml": "9bbe29e4b240a8dc1ff5970a9de8200d9a314a75d0a1d5733d99f9c9d2d55a44",
+    ".github/actions/ci-workflows/node-lib/sign-plugin/sign.ts": "8c4668c5356f316aa18a5f4f787e927951de1a7dcf7ae903836e08066d475b68",
+    ".github/workflows/ci-workflows--common-release-finalize.yml": "2bbefa4f068c91d86441a6b747ba736adadbf9536d76d7e56ec00e23ac48609e",
+    ".github/workflows/ci-workflows--common-security-scan.yml": "cd3dd17e89ffe65f7702dec1af3abed1274d2708c3ae5f59eb4292e4e63a352f",
+    ".github/workflows/ci-workflows--node-lib-release.yml": "478777ff6f422a3639688c7e5603769931b91164b5e683c0a3419286a75d0337",
+    ".github/workflows/ci-workflows--plugin-pr-check.yml": "a9ef8c927d3922cc24b34576206352873b528352e3e8a36b6a537ee1be391c21",
+    ".github/workflows/pr-check.yml": "a22cf023f60786d75588e5489b2c6fb568a6fa75ea9511701f9a438b9d55ac85",
+    ".github/workflows/release.yml": "78951285f8715c680c3c19c7529770f8c4385e16db801efec7df2746e6df166c"
   }
 }

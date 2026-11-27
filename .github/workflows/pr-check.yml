@@ -1,4 +1,4 @@
-# vendored from algoshred/ci-workflows@0d0478a87a2e15eb77c969d29113bbacaeb0d211
+# vendored from algoshred/ci-workflows@c67a7305dbc42a7c9423f4fb196a568ab5f5ee2e # v2026.1127.2
 # source: templates/plugin/pr-check.yml. Do not edit: regenerate with scripts/vendor.ts in algoshred/ci-workflows.
 # PR check caller for a public vibe plugin (plan sections 8.2, 8.3 and 10.7).
 #

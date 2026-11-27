@@ -1,4 +1,4 @@
-# vendored from algoshred/ci-workflows@0d0478a87a2e15eb77c969d29113bbacaeb0d211
+# vendored from algoshred/ci-workflows@c67a7305dbc42a7c9423f4fb196a568ab5f5ee2e # v2026.1127.2
 # source: .github/workflows/plugin-pr-check.yml. Do not edit: regenerate with scripts/vendor.ts in algoshred/ci-workflows.
 # Reusable PR check for public vibe plugins (`vibe-plugin-*`, plan sections 8.3
 # and 10.7). Plugin repositories are PUBLIC and cannot call this private
@@ -23,10 +23,10 @@ on:
   workflow_call:
     inputs:
       runs-on:
-        description: Runner label.
+        description: 'Runner label override. Empty (the default) routes each job itself: vars.LINUX_RUNNER, or vars.LINUX_DIND_RUNNER for jobs that need Docker, falling back to ubuntu-latest.'
         required: false
         type: string
-        default: ubuntu-latest
+        default: ''
       timeout-minutes:
         description: Timeout of each job, in minutes.
         required: false
@@ -68,7 +68,7 @@ permissions:
 jobs:
   sanity:
     name: Sanity (format, lint, check, build, test)
-    runs-on: ${{ inputs.runs-on }}
+    runs-on: ${{ inputs.runs-on || 'ubuntu-latest' }}
     timeout-minutes: ${{ inputs.timeout-minutes }}
     permissions:
       contents: read
@@ -201,7 +201,7 @@ jobs:
   audit:
     name: bun audit
     if: inputs.audit
-    runs-on: ${{ inputs.runs-on }}
+    runs-on: ${{ inputs.runs-on || 'ubuntu-latest' }}
     timeout-minutes: ${{ inputs.timeout-minutes }}
     permissions:
       contents: read
@@ -224,6 +224,9 @@ jobs:
         env:
           BLOCKING: ${{ inputs.audit-blocking }}
         run: |
+          # The step shell runs with -e; without set +e a finding ends the step
+          # before the advisory/blocking decision below (BOFF-11131).
+          set +e
           set -uo pipefail
           # bun audit exits 1 both on findings and when the registry is
           # unreachable; retry once and tell the two apart from the output.
