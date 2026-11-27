@@ -1,4 +1,4 @@
-# vendored from algoshred/ci-workflows@0d0478a87a2e15eb77c969d29113bbacaeb0d211
+# vendored from algoshred/ci-workflows@c67a7305dbc42a7c9423f4fb196a568ab5f5ee2e # v2026.1127.2
 # source: templates/plugin/release.yml. Do not edit: regenerate with scripts/vendor.ts in algoshred/ci-workflows.
 # Release caller for a public vibe plugin (plan sections 8.3 and 10.7).
 #
@@ -61,8 +61,14 @@ jobs:
       version: ${{ inputs.version || '' }}
       verify-command: ./node_modules/.bin/boff sanity --force
       provenance: true
+      # Plugin signing (BOFF-16561): a repository whose plugin the agent
+      # requires to be signed (every desk plugin) sets the variable
+      # VIBE_PLUGIN_SIGNING_KEY_ID and the secret VIBE_PLUGIN_SIGNING_KEY.
+      # Without the variable the release is not signed, as before.
+      signing-key-id: ${{ vars.VIBE_PLUGIN_SIGNING_KEY_ID || '' }}
     secrets:
       NPM_TOKEN: ${{ secrets.NPMJS_VIBECONTROLS_TOKEN || secrets.NPM_TOKEN }}
+      PLUGIN_SIGNING_KEY: ${{ secrets.VIBE_PLUGIN_SIGNING_KEY }}
 
   finalize:
     needs: publish

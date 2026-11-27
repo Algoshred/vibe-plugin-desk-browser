@@ -1,4 +1,4 @@
-# vendored from algoshred/ci-workflows@0d0478a87a2e15eb77c969d29113bbacaeb0d211
+# vendored from algoshred/ci-workflows@c67a7305dbc42a7c9423f4fb196a568ab5f5ee2e # v2026.1127.2
 # source: .github/workflows/node-lib-release.yml. Do not edit: regenerate with scripts/vendor.ts in algoshred/ci-workflows.
 # Moved from algoshred/dev .github/workflows/node-lib-release.yml (BOFF-10675, plan section 8).
 # Behaviour is unchanged; the dev copy stays for its existing callers. Added:
@@ -40,7 +40,7 @@ on:
         description: "Runner label."
         required: false
         type: string
-        default: "ubuntu-latest"
+        default: ""
       timeout-minutes:
         description: "Job timeout in minutes."
         required: false
@@ -99,9 +99,17 @@ on:
         required: false
         type: boolean
         default: false
+      signing-key-id:
+        description: "Id of the VibeControls plugin signing key (BOFF-16561). When set, the built package is signed with the PLUGIN_SIGNING_KEY secret and the packed tarball is verified before publishing. Empty = do not sign."
+        required: false
+        type: string
+        default: ""
     secrets:
       NPM_TOKEN:
         description: "npm automation token with publish rights on the package scope. Required unless dry-run."
+        required: false
+      PLUGIN_SIGNING_KEY:
+        description: "Ed25519 private key (PKCS#8 PEM) that signs a VibeControls plugin. Required when signing-key-id is set."
         required: false
     outputs:
       version:
@@ -116,7 +124,7 @@ permissions: {}
 jobs:
   publish:
     name: Publish to npm
-    runs-on: ${{ inputs.runs-on }}
+    runs-on: ${{ inputs.runs-on || 'ubuntu-latest' }}
     timeout-minutes: ${{ inputs.timeout-minutes }}
     # id-token is only used when `provenance` is true. A called workflow cannot
     # request a permission conditionally, so the caller always grants it.
@@ -279,6 +287,18 @@ jobs:
         working-directory: ${{ inputs.working-directory }}
         run: bash -euo pipefail -c "$BUILD_COMMAND"
 
+      # After the version stamp and the build, so the signature covers exactly
+      # the files that are published; `npm publish --ignore-scripts` below
+      # changes nothing in the package directory.
+      - name: Sign the plugin package
+        if: inputs.signing-key-id != ''
+        uses: ./.github/actions/ci-workflows/node-lib/sign-plugin
+        env:
+          PLUGIN_SIGNING_KEY: ${{ secrets.PLUGIN_SIGNING_KEY }}
+        with:
+          working-directory: ${{ inputs.working-directory }}
+          key-id: ${{ inputs.signing-key-id }}
+
       - name: Check the packed tarball
         env:
           RELEASE_VERSION: ${{ steps.version.outputs.version }}
@@ -327,7 +347,7 @@ jobs:
             exit 0
           fi
           if [ -z "$NODE_AUTH_TOKEN" ]; then
-            echo "::error::NPM_TOKEN is not available to this repository; pass it with 'secrets: NPM_TOKEN: \${{ secrets.NPM_TOKEN }}'"
+            echo "::error::NPM_TOKEN is not available to this repository; pass the NPM_TOKEN secret from the caller workflow"
             exit 1
           fi
           # A throwaway userconfig keeps the token out of the checked-out tree.

@@ -1,0 +1,41 @@
+# vendored from algoshred/ci-workflows@c67a7305dbc42a7c9423f4fb196a568ab5f5ee2e # v2026.1127.2
+# source: actions/node-lib/sign-plugin/action.yml. Do not edit: regenerate with scripts/vendor.ts in algoshred/ci-workflows.
+# sign-plugin: sign a VibeControls plugin package before it is published
+# (BOFF-16561), then prove the packed tarball carries a signature the agent
+# accepts.
+#
+# Writes `vibe-plugin.sig.json` (an Ed25519 signature over the SHA-512 of every
+# file `npm pack` would publish) into the package directory. The package's
+# package.json "files" must include `vibe-plugin.sig.json`, or the verify step
+# fails. Run it after the version is stamped and the package is built, and
+# before `npm publish`.
+#
+# The private key arrives in the PLUGIN_SIGNING_KEY environment variable
+# (PKCS#8 PEM) and is never written to disk or printed. Key custody and
+# rotation: vibecontrols-agent docs/plugin-signing.md.
+name: sign-plugin
+description: Sign a VibeControls plugin package with the release Ed25519 key and verify the packed tarball.
+
+inputs:
+  working-directory:
+    description: Directory holding package.json, relative to the repository root.
+    required: false
+    default: .
+  key-id:
+    description: Id of the signing key, as listed in the agent trust root (e.g. vc-plugins-2026-12).
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Sign the package
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        KEY_ID: ${{ inputs.key-id }}
+      run: bun "$GITHUB_ACTION_PATH/sign.ts" sign --dir . --key-id "$KEY_ID"
+
+    - name: Verify the packed tarball
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: bun "$GITHUB_ACTION_PATH/sign.ts" verify --dir .

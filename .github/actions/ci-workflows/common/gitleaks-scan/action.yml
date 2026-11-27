@@ -1,4 +1,4 @@
-# vendored from algoshred/ci-workflows@0d0478a87a2e15eb77c969d29113bbacaeb0d211
+# vendored from algoshred/ci-workflows@c67a7305dbc42a7c9423f4fb196a568ab5f5ee2e # v2026.1127.2
 # source: actions/common/gitleaks-scan/action.yml. Do not edit: regenerate with scripts/vendor.ts in algoshred/ci-workflows.
 # gitleaks-scan: secret scan of the commits an event brings in AND of the net
 # change as it lands (BOFF-10449).

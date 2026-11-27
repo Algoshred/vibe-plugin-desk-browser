@@ -1,4 +1,4 @@
-# vendored from algoshred/ci-workflows@0d0478a87a2e15eb77c969d29113bbacaeb0d211
+# vendored from algoshred/ci-workflows@c67a7305dbc42a7c9423f4fb196a568ab5f5ee2e # v2026.1127.2
 # source: actions/common/setup-bun-install/action.yml. Do not edit: regenerate with scripts/vendor.ts in algoshred/ci-workflows.
 # setup-bun-install: Bun from the repo's version file, a restored install cache,
 # the lockfile drift guard, a frozen install and (when the repo uses
